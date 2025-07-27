@@ -871,15 +871,38 @@ module pcileech_bar_impl_RTL8188EE_wifi(
     bit [15:0]     int_status;
     bit [15:0]     int_mask;
     
- 
+    // 动态变化的计数器，用于MAC地址随机化
     time number = 0;
+    
+    // 静态随机值，在初始化时生成，后续保持不变
+    // 这些值在每次固件烧录时都会不同，但单个设备运行期间保持稳定
+    reg [7:0] static_rand_1;
+    reg [7:0] static_rand_2;
+    reg [7:0] static_rand_3;
+    reg [7:0] static_rand_4;
+    reg [7:0] static_rand_5;
+    reg [7:0] static_rand_6;
+    reg [7:0] static_rand_7;
+    reg [7:0] static_rand_8;
+
+    initial begin
+        // 使用不同的初始种子生成静态随机值
+        static_rand_1 = $urandom & 8'h0F;        // 0-15的随机值
+        static_rand_2 = ($urandom & 8'h07) + 1;  // 1-8的随机值
+        static_rand_3 = $urandom & 8'h03;        // 0-3的随机值
+        static_rand_4 = $urandom & 8'h01;        // 0-1的随机值
+        static_rand_5 = $urandom & 8'h1F;        // 0-31的随机值
+        static_rand_6 = $urandom & 8'h07;        // 0-7的随机值
+        static_rand_7 = $urandom & 8'h0F;        // 0-15的随机值
+        static_rand_8 = $urandom & 8'h03;        // 0-3的随机值
+    end
 
     always @ ( posedge clk ) begin
         if (rst) begin
             number <= 0;
             data_32 <= 0;
-           int_mask <= 16'b0;
-           int_status <= 16'b0;
+            int_mask <= 16'b0;
+            int_status <= 16'b0;
         end
         number          <= number + 1;
         drd_req_ctx     <= rd_req_ctx;
@@ -891,7 +914,7 @@ module pcileech_bar_impl_RTL8188EE_wifi(
         rd_rsp_valid    <= drd_req_valid;
         dwr_addr        <= wr_addr;
         dwr_data        <= wr_data;
-         dwr_be         <= wr_be;
+        dwr_be          <= wr_be;
         if (drd_req_valid) begin
             case ({drd_req_addr[31:24], drd_req_addr[23:16], drd_req_addr[15:08], drd_req_addr[07:00]} - base_address_register)
                 16'h0610 : begin
@@ -908,19 +931,26 @@ module pcileech_bar_impl_RTL8188EE_wifi(
                     rd_rsp_data[31:16] <= 16'h0000;
                 end
 
-                16'h0000 : rd_rsp_data <= 32'hFDE3A3F6;
-                16'h0004 : rd_rsp_data <= 32'h20020002;
-                16'h0008 : rd_rsp_data <= 32'h0020FCAB;
-                16'h0010 : rd_rsp_data <= 32'hAAE35941;
-                16'h0014 : rd_rsp_data <= 32'h000289CA;
-                16'h0074 : rd_rsp_data <= 32'h00000001;
-                16'h00D0 : rd_rsp_data <= 32'h00007F02;
-                16'h01E0 : rd_rsp_data <= 32'h0000AF00;
-                16'h01E4 : rd_rsp_data <= 32'h0000021C;
-                16'h0208 : rd_rsp_data <= 32'h7200AB10;
-                16'h020C : rd_rsp_data <= 32'h00FD0000;
-                16'h0214 : rd_rsp_data <= 32'h00000101;
-                16'h0284 : rd_rsp_data <= 32'h00020000;
+                // 设备ID和版本信息寄存器 - 使用静态随机化
+                16'h0000 : rd_rsp_data <= 32'hFDE3A3F6 ^ (static_rand_1 << 8);
+                16'h0004 : rd_rsp_data <= 32'h20020002 ^ (static_rand_2 << 16);
+                16'h0008 : rd_rsp_data <= 32'h0020FCAB ^ (static_rand_3 << 12);
+                16'h0010 : rd_rsp_data <= 32'hAAE35941 ^ (static_rand_4 << 20);
+                16'h0014 : rd_rsp_data <= 32'h000289CA ^ (static_rand_5 << 4);
+                
+                // 状态寄存器 - 关键的保持不变，非关键的使用静态随机化
+                16'h0074 : rd_rsp_data <= 32'h00000001; // 保持不变，关键功能位
+                16'h00D0 : rd_rsp_data <= 32'h00007F02 | (static_rand_6 << 12); // 轻微静态随机化
+                16'h01E0 : rd_rsp_data <= 32'h0000AF00 | static_rand_7; // 轻微静态随机化
+                16'h01E4 : rd_rsp_data <= 32'h0000021C; // 保持不变，可能是关键功能位
+                
+                // 配置寄存器 - 保持大部分不变
+                16'h0208 : rd_rsp_data <= 32'h7200AB10; // 保持不变，关键配置
+                16'h020C : rd_rsp_data <= 32'h00FD0000; // 保持不变，关键配置
+                16'h0214 : rd_rsp_data <= 32'h00000101; // 保持不变，关键配置
+                16'h0284 : rd_rsp_data <= 32'h00020000 | static_rand_8; // 轻微静态随机化
+                
+                // 其他寄存器 - 使用原始固定值，确保功能正常
                 16'h0300 : rd_rsp_data <= 32'hF7070000;
                 16'h0348 : rd_rsp_data <= 32'h97000D00;
                 16'h034C : rd_rsp_data <= 32'h00000010;
