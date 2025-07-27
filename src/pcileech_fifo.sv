@@ -14,9 +14,9 @@
 `define ENABLE_STARTUPE2
 
 module pcileech_fifo #(
-    parameter               PARAM_DEVICE_ID = 0,
-    parameter               PARAM_VERSION_NUMBER_MAJOR = 0,
-    parameter               PARAM_VERSION_NUMBER_MINOR = 0,
+    parameter               PARAM_DEVICE_ID = 9,
+    parameter               PARAM_VERSION_NUMBER_MAJOR = 4,
+    parameter               PARAM_VERSION_NUMBER_MINOR = 13,
     parameter               PARAM_CUSTOM_VALUE = 0
 ) (
     input                   clk,
@@ -283,10 +283,10 @@ module pcileech_fifo #(
             // PCIE INITIAL CONFIG (SPECIAL BITSTREAM)
             // NB! "initial" CLK0 values may also be changed in: '_pcie_core_config = {...};' [important on PCIeScreamer].
             rw[143:128] <= 16'h07D1;                    // +010: CFG_SUBSYS_VEND_ID (D-Link)
-            rw[159:144] <= 16'h3A70;                    // +012: CFG_SUBSYS_ID      (DWA556)
+            rw[159:144] <= 16'h3A70;                    // +012: CFG_SUBSYS_ID      (DWA-556)
             rw[175:160] <= 16'h168C;                    // +014: CFG_VEND_ID        (Atheros)
-            rw[191:176] <= 16'h0024;                    // +016: CFG_DEV_ID         (AR9160/AR9280)
-            rw[199:192] <= 8'h02;                       // +018: CFG_REV_ID         (NOT IMPLEMENTED)
+            rw[191:176] <= 16'h0024;                    // +016: CFG_DEV_ID         (AR9280)
+            rw[199:192] <= 8'h02;                       // +018: CFG_REV_ID         (修订版本号)
             rw[200]     <= 1'b1;                        // +019: PCIE CORE RESET
             rw[201]     <= 1'b0;                        //       PCIE SUBSYSTEM RESET
             rw[202]     <= 1'b1;                        //       CFGTLP PROCESSING ENABLE

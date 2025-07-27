@@ -830,78 +830,322 @@ module pcileech_bar_impl_ar9287_wifi(
     bit [31:0]      data_32;
 
     time number = 0;
+    
+    // 添加统计信息和状态寄存器
+    reg [31:0] rx_packets = 0;
+    reg [31:0] tx_packets = 0;
+    reg [31:0] rx_bytes = 0;
+    reg [31:0] tx_bytes = 0;
+    reg [31:0] rx_errors = 0;
+    reg [31:0] tx_errors = 0;
+    reg [3:0] device_state = 0;
+    reg [3:0] device_temperature = 4;
+    reg [3:0] signal_strength = 0;
+    reg [1:0] link_status = 0;
+    
+    // 添加中断相关寄存器
+    reg [31:0] int_status = 0;        // 中断状态寄存器
+    reg [31:0] int_mask = 32'hFFFFFFFF; // 中断掩码寄存器，默认全部启用
+    reg [31:0] int_cause = 0;         // 中断原因寄存器
+    reg [31:0] int_ack = 0;           // 中断确认寄存器
+    
+    // MSI-X中断表和PBA区域
+    reg [127:0] msix_table[16];       // 16个MSI-X表项，每项128位
+    reg [31:0] msix_pba = 0;          // Pending Bit Array
+    
+    // 中断位定义
+    localparam INT_RX_COMPLETE = 32'h00000001;  // 接收完成中断
+    localparam INT_TX_COMPLETE = 32'h00000002;  // 发送完成中断
+    localparam INT_RX_ERROR = 32'h00000004;     // 接收错误中断
+    localparam INT_TX_ERROR = 32'h00000008;     // 发送错误中断
+    localparam INT_LINK_CHANGE = 32'h00000010;  // 链路状态变化中断
+    localparam INT_DMA_COMPLETE = 32'h00000020; // DMA完成中断
+    localparam INT_BUFFER_FULL = 32'h00000040;  // 缓冲区满中断
 
     always @ ( posedge clk ) begin
-        if (rst)
+        if (rst) begin
             number <= 0;
-
-        number          <= number + 1;
-        drd_req_ctx     <= rd_req_ctx;
-        drd_req_valid   <= rd_req_valid;
-        dwr_valid       <= wr_valid;
-        drd_req_addr    <= rd_req_addr;
-        rd_rsp_ctx      <= drd_req_ctx;
-        rd_rsp_valid    <= drd_req_valid;
-        dwr_addr        <= wr_addr;
-        dwr_data        <= wr_data;
-
-        if (drd_req_valid)
-            case ({drd_req_addr[31:24], drd_req_addr[23:16], drd_req_addr[15:08], drd_req_addr[07:00]} - base_address_register)
-                16'h2000 : begin data_32 <= 1;  rd_rsp_data <= 32'hDEADBEEF; end // EEPROM MGIC REQ
-                16'h2200 : begin data_32 <= 2;  rd_rsp_data <= 32'hDEADBEEF; end // EEPROM SIZE REQ
-                16'h2204 : begin data_32 <= 3;  rd_rsp_data <= 32'hDEADBEEF; end // EEPROM CSUM REQ
-                16'h2208 : begin data_32 <= 4;  rd_rsp_data <= 32'hDEADBEEF; end // EEPROM VERS REQ
-                16'h220C : begin data_32 <= 5;  rd_rsp_data <= 32'hDEADBEEF; end // EEPROM ANTN REQ
-                16'h2210 : begin data_32 <= 6;  rd_rsp_data <= 32'hDEADBEEF; end // EEPROM RDMN REQ
-                16'h2218 : begin data_32 <= 7;  rd_rsp_data <= 32'hDEADBEEF; end // EEPROM MAC0 REQ
-                16'h221C : begin data_32 <= 8;  rd_rsp_data <= 32'hDEADBEEF; end // EEPROM MAC1 REQ
-                16'h2220 : begin data_32 <= 9;  rd_rsp_data <= 32'hDEADBEEF; end // EEPROM MAC2 REQ
-                16'h2224 : begin data_32 <= 10; rd_rsp_data <= 32'hDEADBEEF; end // EEPROM RXTX REQ
-                16'h2228 : begin data_32 <= 11; rd_rsp_data <= 32'hDEADBEEF; end // EEPROM ENDZ REQ
-                16'h4020 : rd_rsp_data <= 32'h001800FF; // MAC VERSION
-                16'h4028 : rd_rsp_data <= 32'h00000060; // interrupt pending
-                16'h4038 : rd_rsp_data <= 32'h00000002; // interrupt pending
-                16'h407C :
-                case (data_32)
-                    1  : rd_rsp_data <= 32'h0000A55A; // EEPROM_MAGIC
-                    2  : rd_rsp_data <= 32'h00000004; // EEPROM_SIZE
-                    3  : rd_rsp_data <= 32'h0000FFFB; // EEPROM_CHECKSUM
-                    4  : rd_rsp_data <= 32'h0000E00E; // EEPROM_VERSION
-                    5  : rd_rsp_data <= 32'h0000E00E; // EEPROM_ANTENNA (2.4ghz, 5ghz)
-                    6  : rd_rsp_data <= 32'h00000000; // EEPROM_REGDOMAIN (location)
-                    7  : rd_rsp_data <= 32'h0000D3C8; // EEPROM_MAC0 (C8:D3)
-                    8  :
-                        begin
-                            rd_rsp_data[7:0]   <= 8'hA3;
-                            rd_rsp_data[15:8]  <= ((0 + (number) % (15 + 1 - 0)) << 4) | (0 + (number + 3) % (15 + 1 - 0));
-                            rd_rsp_data[31:16] <= 16'h0000;
-                        end
-                    9  :
-                        begin
-                            rd_rsp_data[7:0]   <= ((0 + (number + 6) % (15 + 1 - 0)) << 4) | (0 + (number + 9) % (15 + 1 - 0));
-                            rd_rsp_data[15:8]  <= ((0 + (number + 12) % (15 + 1 - 0)) << 4) | (0 + (number + 15) % (15 + 1 - 0));
-                            rd_rsp_data[31:16] <= 16'h0000;
-                        end
-                    10 : rd_rsp_data <= 32'h00000100; // EEPROM_RXTX (00,01)
-                    11 : begin rd_rsp_data <= 32'h00000000; data_32 <= 0; end
-                    default : rd_rsp_data <= 32'h00000000;
+            rx_packets <= 0;
+            tx_packets <= 0;
+            rx_bytes <= 0;
+            tx_bytes <= 0;
+            rx_errors <= 0;
+            tx_errors <= 0;
+            device_state <= 0;
+            device_temperature <= 4;
+            signal_strength <= 0;
+            link_status <= 0;
+            int_status <= 0;
+            int_cause <= 0;
+            int_ack <= 0;
+            msix_pba <= 0;
+            
+            // 初始化MSI-X表
+            for (int i = 0; i < 16; i++) begin
+                msix_table[i] <= {32'h00000000,    // 消息地址高32位
+                                  32'h00000000,    // 消息地址低32位
+                                  32'h00000000,    // 消息数据
+                                  32'h00000001};   // 向量控制 (已启用)
+            end
+        end else begin
+            number          <= number + 1;
+            drd_req_ctx     <= rd_req_ctx;
+            drd_req_valid   <= rd_req_valid;
+            dwr_valid       <= wr_valid;
+            drd_req_addr    <= rd_req_addr;
+            rd_rsp_ctx      <= drd_req_ctx;
+            rd_rsp_valid    <= drd_req_valid;
+            dwr_addr        <= wr_addr;
+            dwr_data        <= wr_data;
+            
+            // 统计信息更新
+            if (number % 997 == 0) begin
+                rx_packets <= rx_packets + 1;
+                rx_bytes <= rx_bytes + ((number % 1500) + 64);
+                int_cause <= int_cause | INT_RX_COMPLETE;  // 触发接收完成中断
+            end
+            
+            if (number % 1009 == 0) begin
+                tx_packets <= tx_packets + 1;
+                tx_bytes <= tx_bytes + ((number % 1500) + 64);
+                int_cause <= int_cause | INT_TX_COMPLETE;  // 触发发送完成中断
+            end
+            
+            if (number % 50021 == 0) begin
+                rx_errors <= rx_errors + 1;
+                int_cause <= int_cause | INT_RX_ERROR;  // 触发接收错误中断
+            end
+            
+            if (number % 60037 == 0) begin
+                tx_errors <= tx_errors + 1;
+                int_cause <= int_cause | INT_TX_ERROR;  // 触发发送错误中断
+            end
+            
+            // DMA中断模拟 - 周期性触发DMA完成中断
+            if (number % 99 == 0) begin
+                int_cause <= int_cause | INT_DMA_COMPLETE;
+            end
+            
+            // 更新中断状态寄存器 - 根据中断原因和掩码
+            int_status <= int_cause & int_mask;
+            
+            // 更新MSI-X PBA - 当有中断发生且对应的MSI-X表项未被屏蔽时
+            if (int_cause != 0) begin
+                // 设置MSI-X PBA位
+                if (int_cause & INT_RX_COMPLETE) msix_pba[0] <= ~msix_table[0][0];  // 如果向量未屏蔽
+                if (int_cause & INT_TX_COMPLETE) msix_pba[1] <= ~msix_table[1][0];
+                if (int_cause & INT_RX_ERROR) msix_pba[2] <= ~msix_table[2][0];
+                if (int_cause & INT_TX_ERROR) msix_pba[3] <= ~msix_table[3][0];
+                if (int_cause & INT_LINK_CHANGE) msix_pba[4] <= ~msix_table[4][0];
+                if (int_cause & INT_DMA_COMPLETE) msix_pba[5] <= ~msix_table[5][0];
+                if (int_cause & INT_BUFFER_FULL) msix_pba[6] <= ~msix_table[6][0];
+            end
+            
+            // 处理中断确认 - 如果写入了中断确认寄存器，清除相应的中断原因位
+            if (dwr_valid && ({dwr_addr[31:24], dwr_addr[23:16], dwr_addr[15:08], dwr_addr[07:00]} - base_address_register) == 16'h4034) begin
+                int_cause <= int_cause & ~dwr_data;  // 清除已确认的中断
+                
+                // 同时清除对应的MSI-X PBA位
+                if (dwr_data & INT_RX_COMPLETE) msix_pba[0] <= 0;
+                if (dwr_data & INT_TX_COMPLETE) msix_pba[1] <= 0;
+                if (dwr_data & INT_RX_ERROR) msix_pba[2] <= 0;
+                if (dwr_data & INT_TX_ERROR) msix_pba[3] <= 0;
+                if (dwr_data & INT_LINK_CHANGE) msix_pba[4] <= 0;
+                if (dwr_data & INT_DMA_COMPLETE) msix_pba[5] <= 0;
+                if (dwr_data & INT_BUFFER_FULL) msix_pba[6] <= 0;
+            end
+            
+            // 设备状态更新
+            case (device_state)
+                0: if (number > 5000) device_state <= 1;
+                1: if (number % 500000 == 0) device_state <= 2;
+                2: if (number % 100000 == 0) device_state <= 1;
+                default: if (number % 1000000 == 0) device_state <= 0;
+            endcase
+            
+            // 温度变化
+            if (number % 10000 == 0) begin
+                if (device_temperature < 4) device_temperature <= 4;
+                else if (device_temperature > 12) device_temperature <= 12;
+                else device_temperature <= device_temperature + ((number % 3) - 1);
+            end
+            
+            // 信号强度变化
+            if (number % 15000 == 0) begin
+                if (link_status == 2) signal_strength <= 8 + (number % 8);
+                else signal_strength <= number % 5;
+            end
+            
+            // 链接状态变化 - 修改为更稳定的链接状态
+            if (number < 10000) begin  // 只在初始阶段变化
+                case (link_status)
+                    0: if (number > 2000) link_status <= 1;
+                    1: if (number > 4000) link_status <= 2;
+                    default: link_status <= 2;  // 保持连接状态
                 endcase
-                16'h7000 : rd_rsp_data <= 32'h00000000; // AR_RTC_RC
-                16'h7044 : rd_rsp_data <= 32'h00000002; // AR_RTC_STATUS
-                16'h8000 : rd_rsp_data <= data_32;      // AR_STA_ID0
-                16'h806C : rd_rsp_data <= 32'h00000000; // AR_OBS_BUS_1
-                16'h9820 : rd_rsp_data <= data_32;      // AR_STA_ID0
-                16'h9860 : rd_rsp_data <= 32'h00000000; // ath_hal_wait
-                16'h9C00 : rd_rsp_data <= 32'h00000000; // rf claim
-                default : rd_rsp_data <= 32'hDEADBEEF;  // default value: 0xDEADBEEF
-            endcase
-        else if (dwr_valid)
-            case ({dwr_addr[31:24], dwr_addr[23:16], dwr_addr[15:08], dwr_addr[07:00]} - base_address_register)
-                16'h8000 : data_32 <= dwr_data;
-                16'h9820 : data_32 <= dwr_data;
-            endcase
-        else
-            rd_rsp_data <= 32'hDEADBEEF;
+            end else begin
+                link_status <= 2;  // 始终保持连接状态
+            end
+
+            if (drd_req_valid)
+                case ({drd_req_addr[31:24], drd_req_addr[23:16], drd_req_addr[15:08], drd_req_addr[07:00]} - base_address_register)
+                    16'h2000 : begin data_32 <= 1;  rd_rsp_data <= 32'hDEADBEEF; end // EEPROM MGIC REQ
+                    16'h2200 : begin data_32 <= 2;  rd_rsp_data <= 32'hDEADBEEF; end // EEPROM SIZE REQ
+                    16'h2204 : begin data_32 <= 3;  rd_rsp_data <= 32'hDEADBEEF; end // EEPROM CSUM REQ
+                    16'h2208 : begin data_32 <= 4;  rd_rsp_data <= 32'hDEADBEEF; end // EEPROM VERS REQ
+                    16'h220C : begin data_32 <= 5;  rd_rsp_data <= 32'hDEADBEEF; end // EEPROM ANTN REQ
+                    16'h2210 : begin data_32 <= 6;  rd_rsp_data <= 32'hDEADBEEF; end // EEPROM RDMN REQ
+                    16'h2218 : begin data_32 <= 7;  rd_rsp_data <= 32'hDEADBEEF; end // EEPROM MAC0 REQ
+                    16'h221C : begin data_32 <= 8;  rd_rsp_data <= 32'hDEADBEEF; end // EEPROM MAC1 REQ
+                    16'h2220 : begin data_32 <= 9;  rd_rsp_data <= 32'hDEADBEEF; end // EEPROM MAC2 REQ
+                    16'h2224 : begin data_32 <= 10; rd_rsp_data <= 32'hDEADBEEF; end // EEPROM RXTX REQ
+                    16'h2228 : begin data_32 <= 11; rd_rsp_data <= 32'hDEADBEEF; end // EEPROM ENDZ REQ
+                    16'h4020 : rd_rsp_data <= 32'h001800FF; // MAC VERSION
+                    16'h4028 : rd_rsp_data <= int_status;   // 返回中断状态
+                    16'h4030 : rd_rsp_data <= int_mask;     // 返回中断掩码
+                    16'h4034 : rd_rsp_data <= int_cause;    // 返回中断原因
+                    16'h4038 : rd_rsp_data <= int_status ? 32'h00000003 : 32'h00000002; // 中断状态指示
+                    16'h407C :
+                    case (data_32)
+                        1  : rd_rsp_data <= 32'h0000A55A; // EEPROM_MAGIC
+                        2  : rd_rsp_data <= 32'h00000004; // EEPROM_SIZE
+                        3  : rd_rsp_data <= 32'h0000FFFB; // EEPROM_CHECKSUM
+                        4  : rd_rsp_data <= 32'h0000E00E; // EEPROM_VERSION
+                        5  : rd_rsp_data <= 32'h0000E00E; // EEPROM_ANTENNA (2.4ghz, 5ghz)
+                        6  : rd_rsp_data <= 32'h00000000; // EEPROM_REGDOMAIN (location)
+                        7  : rd_rsp_data <= 32'h0000D3C8; // EEPROM_MAC0 (C8:D3)
+                        8  :
+                            begin
+                                rd_rsp_data[7:0]   <= 8'hA3;
+                                rd_rsp_data[15:8]  <= ((0 + (number) % (15 + 1 - 0)) << 4) | (0 + (number + 3) % (15 + 1 - 0));
+                                rd_rsp_data[31:16] <= 16'h0000;
+                            end
+                        9  :
+                            begin
+                                rd_rsp_data[7:0]   <= ((0 + (number + 6) % (15 + 1 - 0)) << 4) | (0 + (number + 9) % (15 + 1 - 0));
+                                rd_rsp_data[15:8]  <= ((0 + (number + 12) % (15 + 1 - 0)) << 4) | (0 + (number + 15) % (15 + 1 - 0));
+                                rd_rsp_data[31:16] <= 16'h0000;
+                            end
+                        10 : rd_rsp_data <= 32'h00000100; // EEPROM_RXTX (00,01)
+                        11 : begin rd_rsp_data <= 32'h00000000; data_32 <= 0; end
+                        default : rd_rsp_data <= 32'h00000000;
+                    endcase
+                    16'h7000 : rd_rsp_data <= 32'h00000000; // AR_RTC_RC
+                    16'h7044 : rd_rsp_data <= 32'h00000002; // AR_RTC_STATUS
+                    16'h8000 : rd_rsp_data <= data_32;      // AR_STA_ID0
+                    16'h806C : rd_rsp_data <= 32'h00000000; // AR_OBS_BUS_1
+                    16'h9820 : rd_rsp_data <= data_32;      // AR_STA_ID0
+                    16'h9860 : 
+                        begin
+                            // 模拟真实网卡的等待状态变化
+                            if (number % 13 < 3)
+                                rd_rsp_data <= 32'h00000001;
+                            else if (number % 13 < 6)
+                                rd_rsp_data <= 32'h00000002;
+                            else
+                                rd_rsp_data <= 32'h00000000;
+                        end
+                    16'h9C00 : 
+                        begin
+                            // 模拟RF状态变化
+                            if (number % 17 < 5)
+                                rd_rsp_data <= 32'h00000001;
+                            else if (number % 17 < 10)
+                                rd_rsp_data <= 32'h00000002;
+                            else
+                                rd_rsp_data <= 32'h00000000;
+                        end
+                    
+                    // 统计信息寄存器 - 使用未占用的地址范围
+                    16'hA000 : rd_rsp_data <= rx_packets;   // 接收数据包计数
+                    16'hA004 : rd_rsp_data <= tx_packets;   // 发送数据包计数
+                    16'hA008 : rd_rsp_data <= rx_bytes;     // 接收字节计数
+                    16'hA00C : rd_rsp_data <= tx_bytes;     // 发送字节计数
+                    16'hA010 : rd_rsp_data <= rx_errors;    // 接收错误计数
+                    16'hA014 : rd_rsp_data <= tx_errors;    // 发送错误计数
+                    16'hA018 : rd_rsp_data <= number[31:0]; // 运行时间计数器
+                    
+                    // 设备状态寄存器 - 使用未占用的地址范围
+                    16'hA100 : rd_rsp_data <= {24'h0, device_state, device_temperature};  // 设备状态和温度
+                    16'hA104 : rd_rsp_data <= {24'h0, signal_strength, 2'b00, link_status};  // 信号强度和链接状态
+                    16'hA108 : rd_rsp_data <= 32'h00000001;  // 链接活动标志 - 始终为活动状态
+                    16'hA10C : rd_rsp_data <= {8'h0, 8'h01, 8'h03, 8'h01};  // 高速能力标志
+                    
+                    // 添加高速链路能力寄存器
+                    16'hA110 : rd_rsp_data <= 32'h00000064;  // 100Mbps能力
+                    16'hA114 : rd_rsp_data <= 32'h000003E8;  // 1000Mbps能力
+                    16'hA118 : rd_rsp_data <= 32'h00000001;  // 高速模式启用
+                    16'hA11C : rd_rsp_data <= 32'h00000002;  // 全双工模式
+                    
+                    // 添加媒体类型和链路状态寄存器
+                    16'hA120 : rd_rsp_data <= 32'h00000001;  // 铜缆介质
+                    16'hA124 : rd_rsp_data <= 32'h00000001;  // 链路已建立
+                    16'hA128 : rd_rsp_data <= 32'h00000000;  // 无错误
+                    16'hA12C : rd_rsp_data <= 32'h000003E8;  // 当前速度 1000Mbps
+                    
+                    // 固件版本信息寄存器 - 使用未占用的地址范围
+                    16'hA200 : rd_rsp_data <= 32'h02010003;  // 固件版本号: 2.1.0.3
+                    16'hA204 : rd_rsp_data <= 32'h20230615;  // 固件日期: 2023/06/15
+                    16'hA208 : rd_rsp_data <= 32'h41523932;  // 芯片ID "AR92" (ASCII)
+                    16'hA20C : rd_rsp_data <= 32'h38370000;  // 芯片ID "87" (ASCII)
+                    16'hA210 : rd_rsp_data <= 32'h44574135;  // 产品ID "DWA5" (ASCII)
+                    16'hA214 : rd_rsp_data <= 32'h35360000;  // 产品ID "56" (ASCII)
+                    16'hA218 : rd_rsp_data <= 32'h00000002;  // 硬件版本
+                    16'hA21C : rd_rsp_data <= 32'h00000001;  // 硬件修订版本
+                    
+                    // MSI-X表区域 (0x0000-0x07FF)
+                    // 每个表项16字节(128位)，共16个表项
+                    16'h0000, 16'h0004, 16'h0008, 16'h000C: rd_rsp_data <= msix_table[0][({drd_req_addr[3:2], 5'b00000})+:32];
+                    16'h0010, 16'h0014, 16'h0018, 16'h001C: rd_rsp_data <= msix_table[1][({drd_req_addr[3:2], 5'b00000})+:32];
+                    16'h0020, 16'h0024, 16'h0028, 16'h002C: rd_rsp_data <= msix_table[2][({drd_req_addr[3:2], 5'b00000})+:32];
+                    16'h0030, 16'h0034, 16'h0038, 16'h003C: rd_rsp_data <= msix_table[3][({drd_req_addr[3:2], 5'b00000})+:32];
+                    16'h0040, 16'h0044, 16'h0048, 16'h004C: rd_rsp_data <= msix_table[4][({drd_req_addr[3:2], 5'b00000})+:32];
+                    16'h0050, 16'h0054, 16'h0058, 16'h005C: rd_rsp_data <= msix_table[5][({drd_req_addr[3:2], 5'b00000})+:32];
+                    16'h0060, 16'h0064, 16'h0068, 16'h006C: rd_rsp_data <= msix_table[6][({drd_req_addr[3:2], 5'b00000})+:32];
+                    16'h0070, 16'h0074, 16'h0078, 16'h007C: rd_rsp_data <= msix_table[7][({drd_req_addr[3:2], 5'b00000})+:32];
+                    16'h0080, 16'h0084, 16'h0088, 16'h008C: rd_rsp_data <= msix_table[8][({drd_req_addr[3:2], 5'b00000})+:32];
+                    16'h0090, 16'h0094, 16'h0098, 16'h009C: rd_rsp_data <= msix_table[9][({drd_req_addr[3:2], 5'b00000})+:32];
+                    16'h00A0, 16'h00A4, 16'h00A8, 16'h00AC: rd_rsp_data <= msix_table[10][({drd_req_addr[3:2], 5'b00000})+:32];
+                    16'h00B0, 16'h00B4, 16'h00B8, 16'h00BC: rd_rsp_data <= msix_table[11][({drd_req_addr[3:2], 5'b00000})+:32];
+                    16'h00C0, 16'h00C4, 16'h00C8, 16'h00CC: rd_rsp_data <= msix_table[12][({drd_req_addr[3:2], 5'b00000})+:32];
+                    16'h00D0, 16'h00D4, 16'h00D8, 16'h00DC: rd_rsp_data <= msix_table[13][({drd_req_addr[3:2], 5'b00000})+:32];
+                    16'h00E0, 16'h00E4, 16'h00E8, 16'h00EC: rd_rsp_data <= msix_table[14][({drd_req_addr[3:2], 5'b00000})+:32];
+                    16'h00F0, 16'h00F4, 16'h00F8, 16'h00FC: rd_rsp_data <= msix_table[15][({drd_req_addr[3:2], 5'b00000})+:32];
+                    
+                    // MSI-X PBA区域 (0x0800-0x080F)
+                    16'h0800: rd_rsp_data <= msix_pba;
+                    16'h0804, 16'h0808, 16'h080C: rd_rsp_data <= 32'h00000000;
+                    
+                    default : rd_rsp_data <= 32'hDEADBEEF;  // default value: 0xDEADBEEF
+                endcase
+            else if (dwr_valid)
+                case ({dwr_addr[31:24], dwr_addr[23:16], dwr_addr[15:08], dwr_addr[07:00]} - base_address_register)
+                    16'h8000 : data_32 <= dwr_data;
+                    16'h9820 : data_32 <= dwr_data;
+                    16'h4030 : int_mask <= dwr_data;     // 写入中断掩码
+                    16'h4034 : int_ack <= dwr_data;      // 写入中断确认
+                    
+                    // MSI-X表区域写入
+                    16'h0000, 16'h0004, 16'h0008, 16'h000C: msix_table[0][({dwr_addr[3:2], 5'b00000})+:32] <= dwr_data;
+                    16'h0010, 16'h0014, 16'h0018, 16'h001C: msix_table[1][({dwr_addr[3:2], 5'b00000})+:32] <= dwr_data;
+                    16'h0020, 16'h0024, 16'h0028, 16'h002C: msix_table[2][({dwr_addr[3:2], 5'b00000})+:32] <= dwr_data;
+                    16'h0030, 16'h0034, 16'h0038, 16'h003C: msix_table[3][({dwr_addr[3:2], 5'b00000})+:32] <= dwr_data;
+                    16'h0040, 16'h0044, 16'h0048, 16'h004C: msix_table[4][({dwr_addr[3:2], 5'b00000})+:32] <= dwr_data;
+                    16'h0050, 16'h0054, 16'h0058, 16'h005C: msix_table[5][({dwr_addr[3:2], 5'b00000})+:32] <= dwr_data;
+                    16'h0060, 16'h0064, 16'h0068, 16'h006C: msix_table[6][({dwr_addr[3:2], 5'b00000})+:32] <= dwr_data;
+                    16'h0070, 16'h0074, 16'h0078, 16'h007C: msix_table[7][({dwr_addr[3:2], 5'b00000})+:32] <= dwr_data;
+                    16'h0080, 16'h0084, 16'h0088, 16'h008C: msix_table[8][({dwr_addr[3:2], 5'b00000})+:32] <= dwr_data;
+                    16'h0090, 16'h0094, 16'h0098, 16'h009C: msix_table[9][({dwr_addr[3:2], 5'b00000})+:32] <= dwr_data;
+                    16'h00A0, 16'h00A4, 16'h00A8, 16'h00AC: msix_table[10][({dwr_addr[3:2], 5'b00000})+:32] <= dwr_data;
+                    16'h00B0, 16'h00B4, 16'h00B8, 16'h00BC: msix_table[11][({dwr_addr[3:2], 5'b00000})+:32] <= dwr_data;
+                    16'h00C0, 16'h00C4, 16'h00C8, 16'h00CC: msix_table[12][({dwr_addr[3:2], 5'b00000})+:32] <= dwr_data;
+                    16'h00D0, 16'h00D4, 16'h00D8, 16'h00DC: msix_table[13][({dwr_addr[3:2], 5'b00000})+:32] <= dwr_data;
+                    16'h00E0, 16'h00E4, 16'h00E8, 16'h00EC: msix_table[14][({dwr_addr[3:2], 5'b00000})+:32] <= dwr_data;
+                    16'h00F0, 16'h00F4, 16'h00F8, 16'h00FC: msix_table[15][({dwr_addr[3:2], 5'b00000})+:32] <= dwr_data;
+                endcase
+            else
+                rd_rsp_data <= 32'hDEADBEEF;
+        end
     end
 
 endmodule

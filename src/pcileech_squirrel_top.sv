@@ -11,10 +11,10 @@
 `include "pcileech_header.svh"
 
 module pcileech_squirrel_top #(
-    parameter       PARAM_DEVICE_ID = 4,
-    parameter       PARAM_VERSION_NUMBER_MAJOR = 4,
-    parameter       PARAM_VERSION_NUMBER_MINOR = 13,
-    parameter       PARAM_CUSTOM_VALUE = 32'hffffffff
+    parameter       PARAM_DEVICE_ID = 9,                // 修改为9，与Neko DMATest Tool期望的ID匹配
+    parameter       PARAM_VERSION_NUMBER_MAJOR = 4,     // 修改为4.13，与Neko DMATest Tool期望的版本匹配
+    parameter       PARAM_VERSION_NUMBER_MINOR = 13,    // 修改为4.13，与Neko DMATest Tool期望的版本匹配
+    parameter       PARAM_CUSTOM_VALUE = 32'h00000000   // 修改为0，与Neko DMATest Tool期望的值匹配
 ) (
     // SYS
     input           clk,
