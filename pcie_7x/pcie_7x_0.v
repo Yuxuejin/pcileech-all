@@ -634,11 +634,11 @@ output wire pcie_drp_rdy;
     .ENABLE_JTAG_DBG("FALSE"),
     .REDUCE_OOB_FREQ("FALSE")
   ) inst (
-    .cfg_subsys_ven_id(16'H10EE),
-    .cfg_ven_id(16'H10EE),
-    .cfg_dev_id_pf0(16'H0007),
+    .cfg_subsys_ven_id(16'H07D1),    // 修改为D-Link的供应商ID
+    .cfg_ven_id(16'H168C),           // 修改为Atheros的供应商ID
+    .cfg_dev_id_pf0(16'H0024),       // 修改为AR9160/AR9280的设备ID
     .cfg_rev_id_pf0(8'H00),
-    .cfg_subsys_id_pf0(16'H0007),
+    .cfg_subsys_id_pf0(16'H3A70),    // 修改为DWA556的子系统ID
     .pci_exp_txp(pci_exp_txp),
     .pci_exp_txn(pci_exp_txn),
     .pci_exp_rxp(pci_exp_rxp),

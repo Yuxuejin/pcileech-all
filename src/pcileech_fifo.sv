@@ -215,7 +215,7 @@ module pcileech_fifo #(
     reg     [239:0]     rw;
     
     // special non-user accessible registers 
-    reg     [79:0]      _pcie_core_config = { 4'hf, 1'b1, 1'b1, 1'b0, 1'b0, 8'h02, 16'h0666, 16'h10EE, 16'h0007, 16'h10EE };
+    reg     [79:0]      _pcie_core_config = { 4'hf, 1'b1, 1'b1, 1'b0, 1'b0, 8'h02, 16'h0024, 16'h168C, 16'h3A70, 16'h07D1 };
     time                _cmd_timer_inactivity_base;
     reg                 rwi_drp_rd_en;
     reg                 rwi_drp_wr_en;
@@ -282,10 +282,10 @@ module pcileech_fifo #(
             rw[127:96]  <= 0;                           // +00C: cmd_send_count [little-endian]
             // PCIE INITIAL CONFIG (SPECIAL BITSTREAM)
             // NB! "initial" CLK0 values may also be changed in: '_pcie_core_config = {...};' [important on PCIeScreamer].
-            rw[143:128] <= 16'h10EE;                    // +010: CFG_SUBSYS_VEND_ID (NOT IMPLEMENTED)
-            rw[159:144] <= 16'h0007;                    // +012: CFG_SUBSYS_ID      (NOT IMPLEMENTED)
-            rw[175:160] <= 16'h10EE;                    // +014: CFG_VEND_ID        (NOT IMPLEMENTED)
-            rw[191:176] <= 16'h0666;                    // +016: CFG_DEV_ID         (NOT IMPLEMENTED)
+            rw[143:128] <= 16'h07D1;                    // +010: CFG_SUBSYS_VEND_ID (D-Link)
+            rw[159:144] <= 16'h3A70;                    // +012: CFG_SUBSYS_ID      (DWA556)
+            rw[175:160] <= 16'h168C;                    // +014: CFG_VEND_ID        (Atheros)
+            rw[191:176] <= 16'h0024;                    // +016: CFG_DEV_ID         (AR9160/AR9280)
             rw[199:192] <= 8'h02;                       // +018: CFG_REV_ID         (NOT IMPLEMENTED)
             rw[200]     <= 1'b1;                        // +019: PCIE CORE RESET
             rw[201]     <= 1'b0;                        //       PCIE SUBSYSTEM RESET
