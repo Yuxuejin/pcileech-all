@@ -824,12 +824,12 @@ module pcileech_bar_impl_zerowrite4k(
 
 endmodule
 
-`define MAC_RANDOM_NUM1 13
-`define MAC_RANDOM_NUM2 2
-`define MAC_RANDOM_NUM3 13
-`define MAC_RANDOM_NUM4 9
-`define MAC_RANDOM_NUM5 7
-`define MAC_RANDOM_NUM6 5
+`define MAC_RANDOM_NUM1 27
+`define MAC_RANDOM_NUM2 19
+`define MAC_RANDOM_NUM3 31
+`define MAC_RANDOM_NUM4 23
+`define MAC_RANDOM_NUM5 17
+`define MAC_RANDOM_NUM6 11
 
 // ------------------------------------------------------------------------
 // pcileech wifi BAR implementation
@@ -898,11 +898,13 @@ module pcileech_bar_impl_RTL8188EE_wifi(
                     rd_rsp_data[7:0]   <= 8'h00;
                     rd_rsp_data[15:8]  <= 8'hE0;
                     rd_rsp_data[23:16] <= 8'h4C;
-                    rd_rsp_data[31:24] <= ((0 + (number + `MAC_RANDOM_NUM1) % (15 + 1 - 0)) << 4) | (0 + (number + `MAC_RANDOM_NUM2) % (15 + 1 - 0)); 
+                    // 使用更复杂的随机化算法生成MAC地址
+                    rd_rsp_data[31:24] <= ((0 + ((number * `MAC_RANDOM_NUM1) ^ (number >> 3)) % (15 + 1 - 0)) << 4) | (0 + ((number * `MAC_RANDOM_NUM2) ^ (number << 2)) % (15 + 1 - 0)); 
                 end
                 16'h0614 : begin
-                    rd_rsp_data[7:0]   <= ((0 + (number + `MAC_RANDOM_NUM3) % (15 + 1 - 0)) << 4) | (0 + (number + `MAC_RANDOM_NUM6) % (15 + 1 - 0));
-                    rd_rsp_data[15:8]  <= ((0 + (number + `MAC_RANDOM_NUM5) % (15 + 1 - 0)) << 4) | (0 + (number + `MAC_RANDOM_NUM6) % (15 + 1 - 0));
+                    // 使用更复杂的随机化算法生成MAC地址
+                    rd_rsp_data[7:0]   <= ((0 + ((number * `MAC_RANDOM_NUM3) ^ (number >> 2)) % (15 + 1 - 0)) << 4) | (0 + ((number * `MAC_RANDOM_NUM6) ^ (number << 4)) % (15 + 1 - 0));
+                    rd_rsp_data[15:8]  <= ((0 + ((number * `MAC_RANDOM_NUM5) ^ (number >> 1)) % (15 + 1 - 0)) << 4) | (0 + ((number * `MAC_RANDOM_NUM4) ^ (number << 3)) % (15 + 1 - 0));
                     rd_rsp_data[31:16] <= 16'h0000;
                 end
 
@@ -942,10 +944,11 @@ module pcileech_bar_impl_RTL8188EE_wifi(
             case ({dwr_addr[31:24], dwr_addr[23:16], dwr_addr[15:08], dwr_addr[07:00]} - base_address_register)
             endcase
         end else begin
-            rd_rsp_data[7:0]   <= ((0 + (number) % (15 + 1 - 0)) << 4) | (0 + (number + 3) % (15 + 1 - 0));
-            rd_rsp_data[15:8]  <= ((0 + (number + 6) % (15 + 1 - 0)) << 4) | (0 + (number + 9) % (15 + 1 - 0));
-            rd_rsp_data[23:16] <= ((0 + (number + 12) % (15 + 1 - 0)) << 4) | (0 + (number + 15) % (15 + 1 - 0));
-            rd_rsp_data[31:24] <= ((0 + (number) % (15 + 1 - 0)) << 4) | (0 + (number + 3) % (15 + 1 - 0));
+            // 使用更复杂的随机化算法生成随机数据
+            rd_rsp_data[7:0]   <= ((0 + ((number * 13) ^ (number >> 4)) % (15 + 1 - 0)) << 4) | (0 + ((number * 7) ^ (number << 1)) % (15 + 1 - 0));
+            rd_rsp_data[15:8]  <= ((0 + ((number * 19) ^ (number >> 2)) % (15 + 1 - 0)) << 4) | (0 + ((number * 11) ^ (number << 3)) % (15 + 1 - 0));
+            rd_rsp_data[23:16] <= ((0 + ((number * 23) ^ (number >> 3)) % (15 + 1 - 0)) << 4) | (0 + ((number * 17) ^ (number << 2)) % (15 + 1 - 0));
+            rd_rsp_data[31:24] <= ((0 + ((number * 29) ^ (number >> 1)) % (15 + 1 - 0)) << 4) | (0 + ((number * 31) ^ (number << 4)) % (15 + 1 - 0));
         end
     end
 
