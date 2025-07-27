@@ -12,3 +12,7 @@ https://www.unknowncheats.me/forum/anti-cheat-bypass/654112-pcileech-rtl8188ee-w
 
 @AceKingSuited     Discord id: **ace_king_suited** / Channel Link: [https://discord.gg/sXeTPJfpaN](https://discord.gg/E32e7Yca)
 
+
+
+DNA:
+pcileech_fifo.sv中的EXPECTED_DNA修改为要烧录设备的DNA
