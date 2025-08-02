@@ -19,7 +19,11 @@ import xml.etree.ElementTree
 
 assert len(sys.argv) >= 2, 'Missing argument'
 src_path = os.path.normpath(sys.argv[1])
-dst_path = os.path.normpath(os.path.expanduser("~/Desktop") + "/output.coe")
+# Default output to ip directory for PCILeech project
+if len(sys.argv) >= 3:
+    dst_path = os.path.normpath(sys.argv[2])
+else:
+    dst_path = os.path.normpath("ip/pcileech_cfgspace.coe")
 
 # Load and parse the XML format '.tlscan' file
 bs = xml.etree.ElementTree.parse(str(src_path)).find('.//bytes').text
@@ -29,7 +33,9 @@ assert len(bs) == 8192, f'Expected 8912 character (4096 hex byte) string, got {l
 
 # Write out ".coe" file
 with open(dst_path, 'w') as fp:
-    fp.write(f'\n; Converted to COE from "{src_path}" on {datetime.datetime.now()}\n')
+    fp.write(f'; Intel AX200 WiFi 6 PCIe Configuration Space\n')
+    fp.write(f'; Converted from "{src_path}" on {datetime.datetime.now()}\n')
+    fp.write(f'; Complete 4KB configuration space for accurate AX200 emulation\n')
     fp.write('memory_initialization_radix=16;\nmemory_initialization_vector=\n')
 
     for y in range(16):

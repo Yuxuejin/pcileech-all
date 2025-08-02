@@ -307,4 +307,14 @@ def main(file_in, file_out):
 
 
 if __name__ == "__main__":
-    main("./pcileech_cfgspace.coe", "pcileech_cfgspace_writemask.coe")
+    import sys
+    if len(sys.argv) >= 3:
+        input_file = sys.argv[1]
+        output_file = sys.argv[2]
+    else:
+        input_file = "ip/pcileech_cfgspace.coe"
+        output_file = "ip/pcileech_cfgspace_writemask.coe"
+
+    print(f"Analyzing PCIe configuration space: {input_file}")
+    print(f"Generating write mask: {output_file}")
+    main(input_file, output_file)
