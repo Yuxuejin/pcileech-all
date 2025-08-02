@@ -1,0 +1,68 @@
+AX200 PCIe Configuration Space Analysis
+=====================================
+
+Based on AX200.tlscan file analysis:
+
+PCIe Configuration Header (Standard):
+------------------------------------
+Offset 0x00-0x01: Vendor ID = 0x8086 (Intel Corporation)
+Offset 0x02-0x03: Device ID = 0x2723 (Intel AX200)
+Offset 0x04-0x05: Command = 0x0406
+Offset 0x06-0x07: Status = 0x0010
+Offset 0x08: Revision ID = 0x1A
+Offset 0x09-0x0B: Class Code = 0x028000 (Network Controller - Ethernet)
+Offset 0x0C: Cache Line Size = 0x10
+Offset 0x0D: Latency Timer = 0x00
+Offset 0x0E: Header Type = 0x00 (Type 0 - Standard PCI Device)
+Offset 0x0F: BIST = 0x00
+
+Base Address Registers (BARs):
+-----------------------------
+BAR0 (0x10-0x13): 0xf64fc004
+  - Bit 0 = 0: Memory space
+  - Bits 2-1 = 10: 64-bit addressing
+  - Bit 3 = 1: Prefetchable
+  - Base Address = 0xf64fc000
+  - Size: Need to determine from BAR sizing
+
+BAR1 (0x14-0x17): 0x00000000 (Upper 32 bits of BAR0 for 64-bit addressing)
+
+BAR2 (0x18-0x1B): 0x00000000 (Not used)
+BAR3 (0x1C-0x1F): 0x00000000 (Not used)
+BAR4 (0x20-0x23): 0x00000000 (Not used)
+BAR5 (0x24-0x27): 0x00000000 (Not used)
+
+Other Configuration Registers:
+-----------------------------
+Offset 0x28-0x2B: Cardbus CIS Pointer = 0x00000000
+Offset 0x2C-0x2D: Subsystem Vendor ID = 0x8086 (Intel)
+Offset 0x2E-0x2F: Subsystem ID = 0x0084
+Offset 0x30-0x33: Expansion ROM Base Address = 0x00000000
+Offset 0x34: Capabilities Pointer = 0xC8
+Offset 0x35-0x3B: Reserved = 0x00000000000000
+Offset 0x3C: Interrupt Line = 0x00
+Offset 0x3D: Interrupt Pin = 0x01
+Offset 0x3E: Min_Gnt = 0x00
+Offset 0x3F: Max_Lat = 0x00
+
+Key Capabilities (starting at offset 0xC8):
+------------------------------------------
+The device supports various PCIe capabilities including:
+- Power Management
+- MSI/MSI-X
+- PCIe Express Capability
+- Device Serial Number (DSN)
+
+Summary for Firmware Configuration:
+----------------------------------
+- Vendor ID: 0x8086
+- Device ID: 0x2723
+- Subsystem Vendor ID: 0x8086
+- Subsystem ID: 0x0084
+- Revision ID: 0x1A
+- Class Code: 0x028000
+- BAR0: 64-bit prefetchable memory, size to be determined
+- Capabilities Pointer: 0xC8
+- Interrupt Pin: 1
+
+This is a standard Intel AX200 WiFi 6 network adapter configuration.
