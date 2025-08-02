@@ -294,16 +294,22 @@ def main(file_in, file_out):
         cap_start_index = cap_start // 4
         wr_mask = update_writemask(wr_mask, section, cap_start_index)
 
-    # 写入更新后的写掩码到输出文件
-    new_line_index = 0
+    # 写入更新后的写掩码到输出文件（Vivado .coe格式）
     with open(file_out, "w") as f:
+        f.write("; Intel AX200 WiFi 6 PCIe Configuration Write Mask\n")
+        f.write("; Auto-generated based on capability analysis\n")
+        f.write("memory_initialization_radix=16;\n")
+        f.write("memory_initialization_vector=\n\n")
+
+        new_line_index = 0
         f.write(f"; {format(new_line_index, 'X').zfill(2) + '00'}\n")
         for i in range(0, len(wr_mask), 4):
             f.write(",".join(wr_mask[i : i + 4]) + ",\n")
-            if i >= 64 and (i) % 64 == 0:
+            if i >= 64 and (i + 4) % 64 == 0 and i + 4 < len(wr_mask):
                 f.write("\n")
                 new_line_index += 1
                 f.write(f"; {format(new_line_index, 'X').zfill(2) + '00'}\n")
+        f.write(";")
 
 
 if __name__ == "__main__":
