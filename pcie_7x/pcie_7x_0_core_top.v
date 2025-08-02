@@ -64,20 +64,13 @@ VC0_TX_LASTPACKET=29,VC0_RX_RAM_LIMIT=7FF,VC0_TOTAL_CREDITS_PH=4,VC0_TOTAL_CREDI
 (* DowngradeIPIdentifiedWarnings = "yes" *)
 module pcie_7x_0_core_top # (
 /*
-CFG_DEV_ID list
-0x002E [blacklisted]
-0x0024 [blacklisted]
-0x002C
-0x002B
-0x002A
-
-full list: https://github.com/torvalds/linux/blob/master/drivers/net/wireless/ath/ath9k/pci.c#L24
+Intel AX200 WiFi 6 Device Configuration - Minimal Changes
 */
-  parameter         CFG_VEND_ID        = 16'h168C,
-  parameter         CFG_DEV_ID         = 16'h002B,
+  parameter         CFG_VEND_ID        = 16'h8086,
+  parameter         CFG_DEV_ID         = 16'h2723,
   parameter         CFG_REV_ID         =  8'h01,
-  parameter         CFG_SUBSYS_VEND_ID = 16'h168C,
-  parameter         CFG_SUBSYS_ID      = 16'h30A4,
+  parameter         CFG_SUBSYS_VEND_ID = 16'h8086,
+  parameter         CFG_SUBSYS_ID      = 16'h0084,
   parameter         PCIE_ID_IF         ="TRUE", 
 
   parameter         EXT_PIPE_SIM = "FALSE",
@@ -93,12 +86,12 @@ full list: https://github.com/torvalds/linux/blob/master/drivers/net/wireless/at
   parameter         AER_CAP_ON = "TRUE",
   parameter         AER_CAP_PERMIT_ROOTERR_UPDATE = "FALSE",
 
-  parameter [31:0]  BAR0 = 32'hFFE00000,
-  parameter [31:0]  BAR1 = 32'h00000000,
-  parameter [31:0]  BAR2 = 32'h00000000,
-  parameter [31:0]  BAR3 = 32'h00000000,
-  parameter [31:0]  BAR4 = 32'h00000000,
-  parameter [31:0]  BAR5 = 32'h00000000,
+  parameter [31:0]  BAR0 = 32'hFFF0000C,  // 64-bit, prefetchable memory (matches AX200)
+  parameter [31:0]  BAR1 = 32'h00000000,  // Upper 32 bits of BAR0
+  parameter [31:0]  BAR2 = 32'h00000000,  // Not used by AX200
+  parameter [31:0]  BAR3 = 32'h00000000,  // Not used by AX200
+  parameter [31:0]  BAR4 = 32'h00000000,  // Not used by AX200
+  parameter [31:0]  BAR5 = 32'h00000000,  // Not used by AX200
 
   parameter         C_DATA_WIDTH = 64,
   parameter [31:0]  CARDBUS_CIS_POINTER = 32'h00000000,
