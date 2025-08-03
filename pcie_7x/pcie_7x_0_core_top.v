@@ -80,25 +80,63 @@ while maintaining DMA functionality for PCILeech operations.
   parameter         CFG_SUBSYS_ID      = 16'h0084,
   parameter         PCIE_ID_IF         ="TRUE", 
 
-  parameter         EXT_PIPE_SIM = "FALSE",
-
-  parameter         ALLOW_X8_GEN2 = "FALSE",
-  parameter         PIPE_PIPELINE_STAGES = 1,
-  parameter [11:0]  AER_BASE_PTR = 12'h100,
-  parameter         AER_CAP_ECRC_CHECK_CAPABLE = "FALSE",
-  parameter         AER_CAP_ECRC_GEN_CAPABLE = "FALSE",
-  parameter         AER_CAP_MULTIHEADER = "FALSE",
-  parameter [11:0]  AER_CAP_NEXTPTR = 12'h140,
-  parameter [23:0]  AER_CAP_OPTIONAL_ERR_SUPPORT = 24'h000000,
-  parameter         AER_CAP_ON = "TRUE",
-  parameter         AER_CAP_PERMIT_ROOTERR_UPDATE = "FALSE",
-
+  // BAR空间配置
   parameter [31:0]  BAR0 = 32'hFFF0000C,  // AX200: 64-bit, prefetchable memory, 16MB
   parameter [31:0]  BAR1 = 32'h00000000,  // Upper 32 bits of BAR0
   parameter [31:0]  BAR2 = 32'h00000000,
   parameter [31:0]  BAR3 = 32'h00000000,
   parameter [31:0]  BAR4 = 32'h00000000,
   parameter [31:0]  BAR5 = 32'h00000000,
+
+  // PCI Express Capability
+  parameter         PCIE_CAP_ON = "TRUE",
+  parameter [7:0]   PCIE_BASE_PTR = 8'h60,
+  parameter [7:0]   PCIE_CAP_NEXTPTR = 8'h00,
+
+  // MSI-X Capability
+  parameter         MSIX_CAP_ON = "FALSE",
+  parameter [7:0]   MSIX_BASE_PTR = 8'h9C,
+  parameter [7:0]   MSIX_CAP_NEXTPTR =8'h00,
+
+  // PCI Power Management Capability
+  parameter         PM_CAP_ON = "TRUE",
+  parameter [7:0]   PM_BASE_PTR = 8'h40,
+  parameter [7:0]   PM_CAP_NEXTPTR = 8'h50,
+
+  // MSI Capability
+  parameter         MSI_CAP_ON = "TRUE",
+  parameter [7:0]   MSI_BASE_PTR = 8'h50,
+  parameter [7:0]   MSI_CAP_NEXTPTR = 8'h60,
+
+  // Advanced Error Reporting Capability
+  parameter         AER_CAP_ON = "TRUE",
+  parameter [11:0]  AER_BASE_PTR = 12'h100,
+  parameter [11:0]  AER_CAP_NEXTPTR = 12'h14C,
+
+  parameter         RBAR_CAP_ON = "FALSE",
+  parameter [11:0]  RBAR_CAP_NEXTPTR = 12'h000,
+  parameter [11:0]  RBAR_BASE_PTR = 12'h000,
+
+  parameter         VC_CAP_ON = "TRUE",
+  parameter [11:0]  VC_BASE_PTR = 12'h140,
+  parameter [11:0]  VC_CAP_NEXTPTR = 12'h160,
+
+  parameter         VSEC_CAP_ON = "TRUE",
+  parameter [11:0]  VSEC_BASE_PTR = 12'h170,
+  parameter [11:0]  VSEC_CAP_NEXTPTR = 12'h000,
+  
+  parameter         DSN_CAP_ON = "FALSE",
+  parameter [11:0]  DSN_BASE_PTR = 12'h160,
+  parameter [11:0]  DSN_CAP_NEXTPTR = 12'h170,
+
+  parameter         EXT_PIPE_SIM = "FALSE",
+  parameter         ALLOW_X8_GEN2 = "FALSE",
+  parameter         PIPE_PIPELINE_STAGES = 1,
+  parameter         AER_CAP_ECRC_CHECK_CAPABLE = "FALSE",
+  parameter         AER_CAP_ECRC_GEN_CAPABLE = "FALSE",
+  parameter         AER_CAP_MULTIHEADER = "FALSE",
+  parameter [23:0]  AER_CAP_OPTIONAL_ERR_SUPPORT = 24'h000000,
+  parameter         AER_CAP_PERMIT_ROOTERR_UPDATE = "FALSE",
 
   parameter         C_DATA_WIDTH = 64,
   parameter [31:0]  CARDBUS_CIS_POINTER = 32'h00000000,
@@ -124,9 +162,6 @@ while maintaining DMA functionality for PCILeech operations.
   parameter         DISABLE_LANE_REVERSAL = "TRUE",
   parameter         DISABLE_RX_POISONED_RESP = "FALSE",
   parameter         DISABLE_SCRAMBLING = "FALSE",
-  parameter [11:0]  DSN_BASE_PTR = 12'h160,
-  parameter [11:0]  DSN_CAP_NEXTPTR = 12'h170,
-  parameter         DSN_CAP_ON = "TRUE",
 
   parameter [10:0]  ENABLE_MSG_ROUTE = 11'b00000000000,
   parameter         ENABLE_RX_TD_ECRC_TRIM = "FALSE",
@@ -155,14 +190,13 @@ while maintaining DMA functionality for PCILeech operations.
   parameter         LL_REPLAY_TIMEOUT_EN = "FALSE",
   parameter integer LL_REPLAY_TIMEOUT_FUNC = 1,
 
+  parameter [7:0]   MSI_CAP_ID = 8'h05,
   parameter [5:0]   LTSSM_MAX_LINK_WIDTH = 6'h1,
   parameter         MSI_CAP_MULTIMSGCAP = 0,
   parameter         MSI_CAP_MULTIMSG_EXTENSION = 0,
-  parameter         MSI_CAP_ON = "TRUE",
   parameter         MSI_CAP_PER_VECTOR_MASKING_CAPABLE = "FALSE",
   parameter         MSI_CAP_64_BIT_ADDR_CAPABLE = "FALSE",
 
-  parameter         MSIX_CAP_ON = "FALSE",
   parameter         MSIX_CAP_PBA_BIR = 0,
   parameter [28:0]  MSIX_CAP_PBA_OFFSET = 29'h0,
   parameter         MSIX_CAP_TABLE_BIR = 0,
@@ -170,12 +204,10 @@ while maintaining DMA functionality for PCILeech operations.
   parameter [10:0]  MSIX_CAP_TABLE_SIZE = 11'h000,
 
   parameter [3:0]   PCIE_CAP_DEVICE_PORT_TYPE = 4'h1,
-  parameter [7:0]   PCIE_CAP_NEXTPTR = 8'h00,
 
   parameter         PM_CAP_DSI = "FALSE",
   parameter         PM_CAP_D1SUPPORT = "TRUE",
   parameter         PM_CAP_D2SUPPORT = "FALSE",
-  parameter [7:0]   PM_CAP_NEXTPTR = 8'h50,
   parameter [4:0]   PM_CAP_PMESUPPORT = 5'h0B,
   parameter         PM_CSR_NOSOFTRST = "FALSE",
 
@@ -197,7 +229,6 @@ while maintaining DMA functionality for PCILeech operations.
   parameter [7:0]   PM_DATA6 = 8'h00,
   parameter [7:0]   PM_DATA7 = 8'h00,
 
-  parameter [11:0]  RBAR_BASE_PTR = 12'h000,
   parameter [4:0]   RBAR_CAP_CONTROL_ENCODEDBAR0 = 5'h00,
   parameter [4:0]   RBAR_CAP_CONTROL_ENCODEDBAR1 = 5'h00,
   parameter [4:0]   RBAR_CAP_CONTROL_ENCODEDBAR2 = 5'h00,
@@ -210,7 +241,6 @@ while maintaining DMA functionality for PCILeech operations.
   parameter [2:0]   RBAR_CAP_INDEX3 = 3'h0,
   parameter [2:0]   RBAR_CAP_INDEX4 = 3'h0,
   parameter [2:0]   RBAR_CAP_INDEX5 = 3'h0,
-  parameter         RBAR_CAP_ON = "FALSE",
   parameter [31:0]  RBAR_CAP_SUP0 = 32'h00001,
   parameter [31:0]  RBAR_CAP_SUP1 = 32'h00001,
   parameter [31:0]  RBAR_CAP_SUP2 = 32'h00001,
@@ -242,9 +272,6 @@ while maintaining DMA functionality for PCILeech operations.
   parameter         USER_CLK_FREQ = 1,
   parameter         USER_CLK2_DIV2 = "FALSE",
 
-  parameter [11:0]  VC_BASE_PTR = 12'h140,
-  parameter [11:0]  VC_CAP_NEXTPTR = 12'h160,
-  parameter         VC_CAP_ON = "TRUE",
   parameter         VC_CAP_REJECT_SNOOP_TRANSACTIONS = "FALSE",
 
   parameter         VC0_CPL_INFINITE = "TRUE",
@@ -256,10 +283,6 @@ while maintaining DMA functionality for PCILeech operations.
   parameter         VC0_TOTAL_CREDITS_PD = 64,
   parameter         VC0_TOTAL_CREDITS_PH = 4,
   parameter         VC0_TX_LASTPACKET = 29,
-
-  parameter [11:0]  VSEC_BASE_PTR = 12'h170,
-  parameter [11:0]  VSEC_CAP_NEXTPTR = 12'h000,
-  parameter         VSEC_CAP_ON = "TRUE",
 
   parameter         DISABLE_ASPM_L1_TIMER = "FALSE",
   parameter         DISABLE_BAR_FILTERING = "FALSE",
@@ -286,22 +309,15 @@ while maintaining DMA functionality for PCILeech operations.
   parameter         LINK_CAP_RSVD_23 = 0,
   parameter         LINK_CONTROL_RCB = 0,
 
-  parameter [7:0]   MSI_BASE_PTR = 8'h50,
-  parameter [7:0]   MSI_CAP_ID = 8'h05,
-  parameter [7:0]   MSI_CAP_NEXTPTR = 8'h60,
-  parameter [7:0]   MSIX_BASE_PTR = 8'h9C,
   parameter [7:0]   MSIX_CAP_ID = 8'h11,
-  parameter [7:0]   MSIX_CAP_NEXTPTR =8'h00,
 
   parameter         N_FTS_COMCLK_GEN1 = 255,
   parameter         N_FTS_COMCLK_GEN2 = 255,
   parameter         N_FTS_GEN1 = 255,
   parameter         N_FTS_GEN2 = 255,
 
-  parameter [7:0]   PCIE_BASE_PTR = 8'h60,
   parameter [7:0]   PCIE_CAP_CAPABILITY_ID = 8'h10,
   parameter [3:0]   PCIE_CAP_CAPABILITY_VERSION = 4'h2,
-  parameter         PCIE_CAP_ON = "TRUE",
   parameter         PCIE_CAP_RSVD_15_14 = 0,
   parameter         PCIE_CAP_SLOT_IMPLEMENTED = "FALSE",
   parameter         PCIE_REVISION = 2,
@@ -315,10 +331,8 @@ while maintaining DMA functionality for PCILeech operations.
   parameter         TRANSCEIVER_CTRL_STATUS_PORTS = "FALSE", 
   parameter         SHARED_LOGIC_IN_CORE = "FALSE",
 
-  parameter [7:0]   PM_BASE_PTR = 8'h40,
   parameter         PM_CAP_AUXCURRENT = 7,
   parameter [7:0]   PM_CAP_ID = 8'h01,
-  parameter         PM_CAP_ON = "TRUE",
   parameter         PM_CAP_PME_CLOCK = "FALSE",
   parameter         PM_CAP_RSVD_04 = 0,
   parameter         PM_CAP_VERSION = 3,
@@ -418,7 +432,6 @@ while maintaining DMA functionality for PCILeech operations.
   parameter [3:0]   AER_CAP_VERSION = 4'h1,
 
   parameter [15:0]  RBAR_CAP_ID = 16'h0015,
-  parameter [11:0]  RBAR_CAP_NEXTPTR = 12'h000,
   parameter [3:0]   RBAR_CAP_VERSION = 4'h1,
   parameter         PCIE_USE_MODE = "1.0",
   parameter         PCIE_GT_DEVICE = "GTP",
