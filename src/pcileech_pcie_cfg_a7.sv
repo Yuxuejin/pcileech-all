@@ -215,8 +215,8 @@ module pcileech_pcie_cfg_a7(
             rw[31:22]   <= 0;                       //       RESERVED FUTURE
             // SIZEOF / BYTECOUNT [little-endian]
             rw[63:32]   <= $bits(rw) >> 3;          // +004: bytecount [little endian]
-            // DSN
-            rw[127:64]  <= 64'h0000000000000000;    // +008: cfg_dsn
+            // DSN - Intel AX200 Device Serial Number
+            rw[127:64]  <= 64'h8086272300000001;    // +008: cfg_dsn (Intel AX200 unique identifier)
             // PCIe CFG MGMT
             rw[159:128] <= 0;                       // +010: cfg_mgmt_di
             rw[169:160] <= 0;                       // +014: cfg_mgmt_dwaddr
