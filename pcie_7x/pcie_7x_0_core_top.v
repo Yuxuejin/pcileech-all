@@ -90,44 +90,48 @@ while maintaining DMA functionality for PCILeech operations.
 
   // PCI Express Capability
   parameter         PCIE_CAP_ON = "TRUE",
-  parameter [7:0]   PCIE_BASE_PTR = 8'h60,
-  parameter [7:0]   PCIE_CAP_NEXTPTR = 8'h00,
+  parameter [7:0]   PCIE_BASE_PTR = 8'h40,
+  parameter [7:0]   PCIE_CAP_NEXTPTR = 8'h80,
 
   // MSI-X Capability
-  parameter         MSIX_CAP_ON = "FALSE",
-  parameter [7:0]   MSIX_BASE_PTR = 8'h9C,
-  parameter [7:0]   MSIX_CAP_NEXTPTR =8'h00,
+  parameter         MSIX_CAP_ON = "TRUE",
+  parameter [7:0]   MSIX_BASE_PTR = 8'h80,
+  parameter [7:0]   MSIX_CAP_NEXTPTR = 8'hC8,  // 指向PM以保持链的完整性
 
   // PCI Power Management Capability
   parameter         PM_CAP_ON = "TRUE",
-  parameter [7:0]   PM_BASE_PTR = 8'h40,
-  parameter [7:0]   PM_CAP_NEXTPTR = 8'h50,
+  parameter [7:0]   PM_BASE_PTR = 8'hC8,
+  parameter [7:0]   PM_CAP_NEXTPTR = 8'hD0,  // 指向MSI以保持链的完整性
 
   // MSI Capability
   parameter         MSI_CAP_ON = "TRUE",
-  parameter [7:0]   MSI_BASE_PTR = 8'h50,
-  parameter [7:0]   MSI_CAP_NEXTPTR = 8'h60,
+  parameter [7:0]   MSI_BASE_PTR = 8'hD0,
+  parameter [7:0]   MSI_CAP_NEXTPTR = 8'h00,  // 避免循环，直接结束
 
   // Advanced Error Reporting Capability
   parameter         AER_CAP_ON = "TRUE",
   parameter [11:0]  AER_BASE_PTR = 12'h100,
-  parameter [11:0]  AER_CAP_NEXTPTR = 12'h14C,
+  parameter [11:0]  AER_CAP_NEXTPTR = 12'h170,  // 指向VSEC
 
+  // RBAR
   parameter         RBAR_CAP_ON = "FALSE",
   parameter [11:0]  RBAR_CAP_NEXTPTR = 12'h000,
   parameter [11:0]  RBAR_BASE_PTR = 12'h000,
 
-  parameter         VC_CAP_ON = "TRUE",
+  // Virtual Channel
+  parameter         VC_CAP_ON = "FALSE",
   parameter [11:0]  VC_BASE_PTR = 12'h140,
   parameter [11:0]  VC_CAP_NEXTPTR = 12'h160,
 
+  // VSEC - Intel Vendor Specific扩展能力
   parameter         VSEC_CAP_ON = "TRUE",
   parameter [11:0]  VSEC_BASE_PTR = 12'h170,
   parameter [11:0]  VSEC_CAP_NEXTPTR = 12'h000,
-  
+
+  // Device Serial Number
   parameter         DSN_CAP_ON = "FALSE",
   parameter [11:0]  DSN_BASE_PTR = 12'h160,
-  parameter [11:0]  DSN_CAP_NEXTPTR = 12'h170,
+  parameter [11:0]  DSN_CAP_NEXTPTR = 12'h000,
 
   parameter         EXT_PIPE_SIM = "FALSE",
   parameter         ALLOW_X8_GEN2 = "FALSE",
@@ -198,10 +202,10 @@ while maintaining DMA functionality for PCILeech operations.
   parameter         MSI_CAP_64_BIT_ADDR_CAPABLE = "FALSE",
 
   parameter         MSIX_CAP_PBA_BIR = 0,
-  parameter [28:0]  MSIX_CAP_PBA_OFFSET = 29'h0,
+  parameter [28:0]  MSIX_CAP_PBA_OFFSET = 29'h00002000,   // PBA at offset 0x2000
   parameter         MSIX_CAP_TABLE_BIR = 0,
-  parameter [28:0]  MSIX_CAP_TABLE_OFFSET = 29'h0,
-  parameter [10:0]  MSIX_CAP_TABLE_SIZE = 11'h000,
+  parameter [28:0]  MSIX_CAP_TABLE_OFFSET = 29'h00001000, // Table at offset 0x1000
+  parameter [10:0]  MSIX_CAP_TABLE_SIZE = 11'h007,        // 8 MSI-X vectors (0-7)
 
   parameter [3:0]   PCIE_CAP_DEVICE_PORT_TYPE = 4'h1,
 

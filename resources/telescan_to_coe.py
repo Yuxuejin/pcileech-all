@@ -42,7 +42,12 @@ with open(dst_path, 'w') as fp:
         fp.write(f'\n; {(y * 256):04X}\n')
 
         for x in range(16):
-            fp.write(f'{bs[0:8]},{bs[8:16]},{bs[16:24]},{bs[24:32]},\n')
+            # Convert bytes to DWORDs with correct endianness
+            dword1 = f"{bs[6:8]}{bs[4:6]}{bs[2:4]}{bs[0:2]}".upper()
+            dword2 = f"{bs[14:16]}{bs[12:14]}{bs[10:12]}{bs[8:10]}".upper()
+            dword3 = f"{bs[22:24]}{bs[20:22]}{bs[18:20]}{bs[16:18]}".upper()
+            dword4 = f"{bs[30:32]}{bs[28:30]}{bs[26:28]}{bs[24:26]}".upper()
+            fp.write(f'{dword1},{dword2},{dword3},{dword4},\n')
             bs = bs[32:]
 
     fp.write(';\n')
