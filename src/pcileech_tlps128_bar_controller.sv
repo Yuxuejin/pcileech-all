@@ -135,7 +135,7 @@ module pcileech_tlps128_bar_controller(
                         bar_rsp_valid[6] ? bar_rsp_data[6] : 0;
     assign rd_rsp_valid = bar_rsp_valid[0] || bar_rsp_valid[1] || bar_rsp_valid[2] || bar_rsp_valid[3] || bar_rsp_valid[4] || bar_rsp_valid[5] || bar_rsp_valid[6];
     
-    pcileech_bar_impl_ar9287_wifi i_bar0(
+    pcileech_bar_impl_ax200_wifi i_bar0(
         .rst                   ( rst                           ),
         .clk                   ( clk                           ),
         .wr_addr               ( wr_addr                       ),
@@ -797,10 +797,10 @@ endmodule
 
 
 // ------------------------------------------------------------------------
-// pcileech wifi BAR implementation
-// Works with Qualcomm Atheros AR9287 chip wifi adapters
+// pcileech Intel AX200 WiFi BAR implementation
+// Emulates Intel AX200 WiFi 6 device behavior for driver compatibility
 // ------------------------------------------------------------------------
-module pcileech_bar_impl_ar9287_wifi(
+module pcileech_bar_impl_ax200_wifi(
     input               rst,
     input               clk,
     // incoming BAR writes:
@@ -828,12 +828,25 @@ module pcileech_bar_impl_ar9287_wifi(
     bit             dwr_valid;
 
     bit [31:0]      data_32;
+    bit [31:0]      device_status;
+    bit [31:0]      interrupt_status;
+
+    // AX200 specific registers
+    bit [31:0]      fw_version;
+    bit [31:0]      hw_revision;
+    bit [31:0]      device_id_reg;
 
     time number = 0;
 
     always @ ( posedge clk ) begin
-        if (rst)
+        if (rst) begin
             number <= 0;
+            device_status <= 32'h00000001;      // Device ready
+            interrupt_status <= 32'h00000000;   // No pending interrupts
+            fw_version <= 32'h48494100;         // Fake firmware version
+            hw_revision <= 32'h0000001A;        // AX200 revision
+            device_id_reg <= 32'h80862723;      // Intel AX200 device ID
+        end
 
         number          <= number + 1;
         drd_req_ctx     <= rd_req_ctx;
@@ -845,63 +858,81 @@ module pcileech_bar_impl_ar9287_wifi(
         dwr_addr        <= wr_addr;
         dwr_data        <= wr_data;
 
-        if (drd_req_valid)
+        // Handle register reads
+        if (drd_req_valid) begin
             case ({drd_req_addr[31:24], drd_req_addr[23:16], drd_req_addr[15:08], drd_req_addr[07:00]} - base_address_register)
-                16'h2000 : begin data_32 <= 1;  rd_rsp_data <= 32'hDEADBEEF; end // EEPROM MGIC REQ
-                16'h2200 : begin data_32 <= 2;  rd_rsp_data <= 32'hDEADBEEF; end // EEPROM SIZE REQ
-                16'h2204 : begin data_32 <= 3;  rd_rsp_data <= 32'hDEADBEEF; end // EEPROM CSUM REQ
-                16'h2208 : begin data_32 <= 4;  rd_rsp_data <= 32'hDEADBEEF; end // EEPROM VERS REQ
-                16'h220C : begin data_32 <= 5;  rd_rsp_data <= 32'hDEADBEEF; end // EEPROM ANTN REQ
-                16'h2210 : begin data_32 <= 6;  rd_rsp_data <= 32'hDEADBEEF; end // EEPROM RDMN REQ
-                16'h2218 : begin data_32 <= 7;  rd_rsp_data <= 32'hDEADBEEF; end // EEPROM MAC0 REQ
-                16'h221C : begin data_32 <= 8;  rd_rsp_data <= 32'hDEADBEEF; end // EEPROM MAC1 REQ
-                16'h2220 : begin data_32 <= 9;  rd_rsp_data <= 32'hDEADBEEF; end // EEPROM MAC2 REQ
-                16'h2224 : begin data_32 <= 10; rd_rsp_data <= 32'hDEADBEEF; end // EEPROM RXTX REQ
-                16'h2228 : begin data_32 <= 11; rd_rsp_data <= 32'hDEADBEEF; end // EEPROM ENDZ REQ
-                16'h4020 : rd_rsp_data <= 32'h001800FF; // MAC VERSION
-                16'h4028 : rd_rsp_data <= 32'h00000060; // interrupt pending
-                16'h4038 : rd_rsp_data <= 32'h00000002; // interrupt pending
-                16'h407C :
-                case (data_32)
-                    1  : rd_rsp_data <= 32'h0000A55A; // EEPROM_MAGIC
-                    2  : rd_rsp_data <= 32'h00000004; // EEPROM_SIZE
-                    3  : rd_rsp_data <= 32'h0000FFFB; // EEPROM_CHECKSUM
-                    4  : rd_rsp_data <= 32'h0000E00E; // EEPROM_VERSION
-                    5  : rd_rsp_data <= 32'h0000E00E; // EEPROM_ANTENNA (2.4ghz, 5ghz)
-                    6  : rd_rsp_data <= 32'h00000000; // EEPROM_REGDOMAIN (location)
-                    7  : rd_rsp_data <= 32'h00006EC4; // EEPROM_MAC0 (C4:6E)
-                    8  :
-                        begin
-                            rd_rsp_data[7:0]   <= 8'h1F;
-                            rd_rsp_data[15:8]  <= ((0 + (number) % (15 + 1 - 0)) << 4) | (0 + (number + 3) % (15 + 1 - 0));
-                            rd_rsp_data[31:16] <= 16'h0000;
-                        end
-                    9  :
-                        begin
-                            rd_rsp_data[7:0]   <= ((0 + (number + 6) % (15 + 1 - 0)) << 4) | (0 + (number + 9) % (15 + 1 - 0));
-                            rd_rsp_data[15:8]  <= ((0 + (number + 12) % (15 + 1 - 0)) << 4) | (0 + (number + 15) % (15 + 1 - 0));
-                            rd_rsp_data[31:16] <= 16'h0000;
-                        end
-                    10 : rd_rsp_data <= 32'h00000100; // EEPROM_RXTX (00,01)
-                    11 : begin rd_rsp_data <= 32'h00000000; data_32 <= 0; end
-                    default : rd_rsp_data <= 32'h00000000;
-                endcase
-                16'h7000 : rd_rsp_data <= 32'h00000000; // AR_RTC_RC
-                16'h7044 : rd_rsp_data <= 32'h00000002; // AR_RTC_STATUS
-                16'h8000 : rd_rsp_data <= data_32;      // AR_STA_ID0
-                16'h806C : rd_rsp_data <= 32'h00000000; // AR_OBS_BUS_1
-                16'h9820 : rd_rsp_data <= data_32;      // AR_STA_ID0
-                16'h9860 : rd_rsp_data <= 32'h00000000; // ath_hal_wait
-                16'h9C00 : rd_rsp_data <= 32'h00000000; // rf claim
-                default : rd_rsp_data <= 32'hDEADBEEF;  // default value: 0xDEADBEEF
+                // Device identification registers
+                32'h0000 : rd_rsp_data <= device_id_reg;        // Device ID register
+                32'h0004 : rd_rsp_data <= hw_revision;          // Hardware revision
+                32'h0008 : rd_rsp_data <= fw_version;           // Firmware version
+
+                // Status and control registers
+                32'h0010 : rd_rsp_data <= device_status;        // Device status
+                32'h0014 : rd_rsp_data <= interrupt_status;     // Interrupt status
+                32'h0018 : rd_rsp_data <= 32'h00000000;         // Control register
+
+                // Common WiFi registers
+                32'h0020 : rd_rsp_data <= 32'h12345678;         // MAC address low
+                32'h0024 : rd_rsp_data <= 32'h0000ABCD;         // MAC address high
+                32'h0028 : rd_rsp_data <= 32'h00000001;         // Link status
+
+                // Power management
+                32'h0030 : rd_rsp_data <= 32'h00000000;         // Power state
+                32'h0034 : rd_rsp_data <= 32'h00000001;         // Wake capabilities
+
+                // MSI-X Table Area (0x1000-0x1FFF) - 8 vectors * 16 bytes each
+                32'h1000 : rd_rsp_data <= 32'h00000000;         // Vector 0: Message Address Low
+                32'h1004 : rd_rsp_data <= 32'h00000000;         // Vector 0: Message Address High
+                32'h1008 : rd_rsp_data <= 32'h00000000;         // Vector 0: Message Data
+                32'h100C : rd_rsp_data <= 32'h00000000;         // Vector 0: Vector Control
+                32'h1010 : rd_rsp_data <= 32'h00000000;         // Vector 1: Message Address Low
+                32'h1014 : rd_rsp_data <= 32'h00000000;         // Vector 1: Message Address High
+                32'h1018 : rd_rsp_data <= 32'h00000000;         // Vector 1: Message Data
+                32'h101C : rd_rsp_data <= 32'h00000000;         // Vector 1: Vector Control
+                // ... (additional vectors would be here)
+
+                // MSI-X PBA Area (0x2000-0x2FFF) - Pending Bit Array
+                32'h2000 : rd_rsp_data <= 32'h00000000;         // PBA bits 0-31
+                32'h2004 : rd_rsp_data <= 32'h00000000;         // PBA bits 32-63
+
+                // Default response for unmapped addresses
+                default  : rd_rsp_data <= 32'h00000000;
             endcase
-        else if (dwr_valid)
+        end else begin
+            rd_rsp_data <= 32'h00000000;
+        end
+
+        // Handle register writes
+        if (dwr_valid) begin
             case ({dwr_addr[31:24], dwr_addr[23:16], dwr_addr[15:08], dwr_addr[07:00]} - base_address_register)
-                16'h8000 : data_32 <= dwr_data;
-                16'h9820 : data_32 <= dwr_data;
+                32'h0014 : interrupt_status <= dwr_data;        // Clear interrupts
+                32'h0018 : begin                                // Control register
+                    // Handle device control commands
+                    if (dwr_data[0]) device_status[0] <= 1'b1;   // Enable device
+                    if (dwr_data[1]) device_status[0] <= 1'b0;   // Disable device
+                end
+                32'h0030 : begin                                // Power management
+                    // Handle power state changes
+                end
+
+                // MSI-X Table writes (0x1000-0x1FFF) - Allow driver to configure MSI-X
+                32'h1000, 32'h1004, 32'h1008, 32'h100C,        // Vector 0
+                32'h1010, 32'h1014, 32'h1018, 32'h101C,        // Vector 1
+                32'h1020, 32'h1024, 32'h1028, 32'h102C,        // Vector 2
+                32'h1030, 32'h1034, 32'h1038, 32'h103C,        // Vector 3
+                32'h1040, 32'h1044, 32'h1048, 32'h104C,        // Vector 4
+                32'h1050, 32'h1054, 32'h1058, 32'h105C,        // Vector 5
+                32'h1060, 32'h1064, 32'h1068, 32'h106C,        // Vector 6
+                32'h1070, 32'h1074, 32'h1078, 32'h107C : begin // Vector 7
+                    // Accept MSI-X table writes but don't need to store them
+                    // The PCIe core handles the actual MSI-X functionality
+                end
+
+                default  : begin
+                    // Ignore writes to read-only or unmapped registers
+                end
             endcase
-        else
-            rd_rsp_data <= 32'hDEADBEEF;
+        end
     end
 
 endmodule
