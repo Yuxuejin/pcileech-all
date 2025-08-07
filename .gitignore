@@ -1,5 +1,6 @@
 .specstory
 .cursorindexingignore
 pcileech_enigma_x1
+pcileech_squirrel
 vivado_pid*
 .Xil

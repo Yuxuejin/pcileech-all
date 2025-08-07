@@ -39,6 +39,11 @@
 `timescale 1ns / 1ps
 `include "pcileech_header.svh"
 
+// 用户特征参数 - 修改这些值来防止特征识别
+// 每个用户使用不同的值，但保持驱动兼容性
+parameter [7:0] USER_SIGNATURE = 8'h01;  // 用户特征签名 (0x00-0xFF)
+parameter [3:0] USER_VARIANT = 4'h1;     // 用户变体 (0x0-0xF)
+
 module pcileech_tlps128_bar_controller(
     input                   rst,
     input                   clk,
@@ -864,22 +869,22 @@ module pcileech_bar_impl_ax200_wifi(
             hw_revision <= 32'h0000001A;        // AX200 revision ID
             device_id_reg <= 32'h80862723;      // Intel AX200 device ID
 
-            // Minimal critical registers for netwtw08 - SAFE VERSION
-            csr_gp_driver_reg <= 32'h00000000;
-            csr_hw_if_config_reg <= 32'h00800000;       // CRITICAL for netwtw08
-            csr_int_coalescing_reg <= 32'h00000000;
-            csr_hw_rev_reg <= 32'h0000001A;             // MUST match PCIe config
+            // 防特征寄存器值 - 加入用户特征但保持驱动兼容性
+            csr_gp_driver_reg <= {24'h000000, USER_SIGNATURE};          // 用户特征在低8位
+            csr_hw_if_config_reg <= 32'h00800000 | (USER_VARIANT << 4); // 保持主要位不变，加入变体
+            csr_int_coalescing_reg <= {28'h0000000, USER_VARIANT};      // 用户变体在低4位
+            csr_hw_rev_reg <= 32'h0000001A;                             // 必须匹配PCIe配置
             csr_reset_reg <= 32'h00000000;
-            csr_gp_cntrl_reg <= 32'h08000000;           // netwtw08 specific value
-            csr_gp_status_reg <= 32'h00000001;          // device ready
-            csr_func_scratch_reg <= 32'h00000000;
-            csr_dbg_link_pwr_mgmt_reg <= 32'h00000000;
+            csr_gp_cntrl_reg <= 32'h08000000 | (USER_SIGNATURE << 8);   // 保持主要功能，加入特征
+            csr_gp_status_reg <= 32'h00000001;                          // 设备就绪状态不变
+            csr_func_scratch_reg <= {USER_SIGNATURE, USER_SIGNATURE, USER_SIGNATURE, USER_SIGNATURE}; // 用户特征填充
+            csr_dbg_link_pwr_mgmt_reg <= {16'h0000, USER_SIGNATURE, USER_SIGNATURE};
 
-            // Essential registers only
-            csr_ucode_load_status_reg <= 32'h00000001;
-            csr_cpu_status_reg <= 32'h00000000;
-            csr_fh_int_status_reg <= 32'h00000000;
-            csr_fh_mask_reg <= 32'h00000000;
+            // 基本寄存器 - 加入用户特征
+            csr_ucode_load_status_reg <= 32'h00000001 | (USER_SIGNATURE << 16);  // 保持功能位，加特征
+            csr_cpu_status_reg <= {24'h000000, USER_SIGNATURE};                  // 用户特征
+            csr_fh_int_status_reg <= {16'h0000, USER_VARIANT, 12'h000};          // 用户变体
+            csr_fh_mask_reg <= {USER_SIGNATURE, USER_SIGNATURE, 16'h0000};
         end
 
         number          <= number + 1;
