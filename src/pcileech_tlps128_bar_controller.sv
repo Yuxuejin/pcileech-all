@@ -869,22 +869,22 @@ module pcileech_bar_impl_ax200_wifi(
             hw_revision <= 32'h0000001A;        // AX200 revision ID
             device_id_reg <= 32'h80862723;      // Intel AX200 device ID
 
-            // 防特征寄存器值 - 加入用户特征但保持驱动兼容性
-            csr_gp_driver_reg <= {24'h000000, USER_SIGNATURE};          // 用户特征在低8位
-            csr_hw_if_config_reg <= 32'h00800000 | (USER_VARIANT << 4); // 保持主要位不变，加入变体
-            csr_int_coalescing_reg <= {28'h0000000, USER_VARIANT};      // 用户变体在低4位
+            // 安全的寄存器值 - 关键寄存器保持原值，只在安全位置加特征
+            csr_gp_driver_reg <= {24'h000000, USER_SIGNATURE};          // 安全：驱动程序寄存器
+            csr_hw_if_config_reg <= 32'h00800000;                       // 保持原值！不加特征
+            csr_int_coalescing_reg <= 32'h00000000;                     // 保持原值！不加特征
             csr_hw_rev_reg <= 32'h0000001A;                             // 必须匹配PCIe配置
             csr_reset_reg <= 32'h00000000;
-            csr_gp_cntrl_reg <= 32'h08000000 | (USER_SIGNATURE << 8);   // 保持主要功能，加入特征
-            csr_gp_status_reg <= 32'h00000001;                          // 设备就绪状态不变
-            csr_func_scratch_reg <= {USER_SIGNATURE, USER_SIGNATURE, USER_SIGNATURE, USER_SIGNATURE}; // 用户特征填充
-            csr_dbg_link_pwr_mgmt_reg <= {16'h0000, USER_SIGNATURE, USER_SIGNATURE};
+            csr_gp_cntrl_reg <= 32'h01000000;                           // 保持原值！不加特征
+            csr_gp_status_reg <= 32'h00000000;                          // 保持原值！不加特征
+            csr_func_scratch_reg <= {USER_SIGNATURE, USER_SIGNATURE, USER_SIGNATURE, USER_SIGNATURE}; // 安全：scratch寄存器
+            csr_dbg_link_pwr_mgmt_reg <= {16'h0000, USER_SIGNATURE, USER_SIGNATURE}; // 安全：调试寄存器
 
-            // 基本寄存器 - 加入用户特征
-            csr_ucode_load_status_reg <= 32'h00000001 | (USER_SIGNATURE << 16);  // 保持功能位，加特征
-            csr_cpu_status_reg <= {24'h000000, USER_SIGNATURE};                  // 用户特征
-            csr_fh_int_status_reg <= {16'h0000, USER_VARIANT, 12'h000};          // 用户变体
-            csr_fh_mask_reg <= {USER_SIGNATURE, USER_SIGNATURE, 16'h0000};
+            // 基本寄存器 - 保持关键功能，只在安全位置加特征
+            csr_ucode_load_status_reg <= 32'h00000001;                           // 保持原值！关键功能位
+            csr_cpu_status_reg <= 32'h00000000;                                  // 保持原值！关键状态位
+            csr_fh_int_status_reg <= 32'h00000000;                               // 保持原值！中断状态
+            csr_fh_mask_reg <= {USER_SIGNATURE, USER_SIGNATURE, 16'h0000};       // 安全：中断掩码高位
         end
 
         number          <= number + 1;
@@ -935,13 +935,18 @@ module pcileech_bar_impl_ax200_wifi(
                 32'h0040 : rd_rsp_data <= 32'h00000000;
                 32'h0044 : rd_rsp_data <= interrupt_status;
 
-                // Essential netwtw08 registers only
-                32'h0130 : rd_rsp_data <= 32'h00000001;             // CSR_APMG_CLK_CTRL
-                32'h0134 : rd_rsp_data <= 32'h00000000;             // CSR_APMG_CLK_DIS
+                // 电源管理寄存器 - 在安全位置加入用户特征
+                32'h0130 : rd_rsp_data <= 32'h00000001;                          // CSR_APMG_CLK_CTRL 保持原值
+                32'h0134 : rd_rsp_data <= {24'h000000, USER_SIGNATURE};          // CSR_APMG_CLK_DIS 安全位置加特征
 
-                // Minimal essential registers for netwtw08
-                32'h0100 : rd_rsp_data <= 32'h00000001;             // CSR_UCODE_LOAD_STATUS - CRITICAL
-                32'h0104 : rd_rsp_data <= 32'h00000000;             // CSR_CPU_STATUS_REG - CRITICAL
+                // 用户特征寄存器 - 专门用于防特征的安全地址
+                32'h0200 : rd_rsp_data <= {USER_SIGNATURE, USER_SIGNATURE, USER_SIGNATURE, USER_SIGNATURE};
+                32'h0204 : rd_rsp_data <= {16'h0000, USER_VARIANT, USER_VARIANT, USER_VARIANT, USER_VARIANT};
+                32'h0208 : rd_rsp_data <= {USER_SIGNATURE, 8'h00, USER_VARIANT, 12'h000};
+
+                // 关键寄存器 - 使用初始化的变量值
+                32'h0100 : rd_rsp_data <= csr_ucode_load_status_reg; // CSR_UCODE_LOAD_STATUS - CRITICAL
+                32'h0104 : rd_rsp_data <= csr_cpu_status_reg;        // CSR_CPU_STATUS_REG - CRITICAL
 
                 // MSI-X Table Area (0x1000-0x1FFF) - 8 vectors * 16 bytes each
                 32'h1000 : rd_rsp_data <= 32'h00000000;         // Vector 0: Message Address Low
